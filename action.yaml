@@ -1,0 +1,37 @@
+commands:
+  01-updateComposer:
+    command: export COMPOSER_HOME=/root && /usr/bin/composer.phar self-update
+
+option_settings:
+  "aws:elasticbeanstalk:container:php:phpini":
+    document_root: /public
+    composer_options: --no-dev --no-interaction --prefer-dist --optimize-autoloader
+  "aws:elasticbeanstalk:sqsd":
+    HttpPath: /worker/queue
+  "aws:elasticbeanstalk:application:environment":
+    APP_ENV: production
+    COMPOSER_HOME: /root
+
+container_commands:
+  00-composer:
+    command: "/usr/bin/composer.phar install"
+  01-migrate:
+    command: "php artisan migrate --force"
+    cwd: "/var/app/ondeck"
+    leader_only: true
+  02-download-node:
+    command: "curl -sL https://rpm.nodesource.com/setup_12.x | bash -"
+  03-install-node:
+    command: "yum -y install nodejs"
+  04-npm-install:
+    command: "npm install --save-dev cross-env"
+
+files:
+  "/opt/elasticbeanstalk/hooks/appdeploy/post/99npm-run-prod.sh":
+    mode: "000755"
+    owner: root
+    group: root
+    content: |
+      #!/usr/bin/env bash
+      cd /var/app/current/
+      sudo npm run production
